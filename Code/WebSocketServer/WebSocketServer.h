@@ -25,12 +25,14 @@ public:
     [[nodiscard]] qsizetype clientCount() const;
     [[nodiscard]] QStringList clientIds() const;
     [[nodiscard]] quint16 serverPort() const;
+    qsizetype broadcastText(const QString &senderId, const QString &text);
 
 signals:
     void clientConnected(const QString &clientId, const QString &peer);
     void clientDisconnected(const QString &clientId, const QString &peer);
     void clientCountChanged(qsizetype count);
     void textMessageReceived(const QString &clientId, const QString &message);
+    void messageRejected(const QString &clientId, const QString &reason);
     void serverError(const QString &message);
 
 private slots:
