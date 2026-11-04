@@ -12,10 +12,12 @@ add_executable(udm15_websocket_server
     main.cpp
     WebSocketServer.cpp
     WebSocketServer.h
+    MessageProtocol.h
 )
+target_link_libraries(udm15_websocket_server PRIVATE Qt6::Core Qt6::WebSockets)
 
-target_link_libraries(udm15_websocket_server
-    PRIVATE
-        Qt6::Core
-        Qt6::WebSockets
+add_executable(udm15_websocket_client
+    WebSocketClient.cpp
+    MessageProtocol.h
 )
+target_link_libraries(udm15_websocket_client PRIVATE Qt6::Core Qt6::WebSockets)
