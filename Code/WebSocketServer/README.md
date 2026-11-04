@@ -1,20 +1,30 @@
-# Task 2 — WebSocket Server (mốc 50%)
+# Task 2 — WebSocket Server (hoàn thành)
 
-## Đã thực hiện
+## Chức năng
 
-- WebSocket Server dùng Qt 6 WebSockets, lắng nghe trên IPv4; cổng mặc định là 5002.
-- Nhận và quản lý các kết nối client, gán ID tăng dần, lưu địa chỉ peer và thời điểm kết nối.
-- Theo dõi sự kiện client kết nối/ngắt kết nối, số client hiện tại, tin nhắn văn bản và lỗi server.
-- Giới hạn tối đa 64 client; từ chối kết nối vượt giới hạn.
-- Cung cấp lệnh chạy server và tham số cổng tùy chọn.
+- Server Qt 6 WebSockets lắng nghe trên IPv4, cổng mặc định 5002.
+- Quản lý kết nối client, ID tăng dần, peer address, thời điểm kết nối và giới hạn 64 client.
+- Nhận yêu cầu broadcast JSON v1, kiểm tra phiên bản, loại bản tin và payload; từ chối yêu cầu sai định dạng.
+- Phát bản tin hợp lệ đến tất cả client đang kết nối, gồm cả người gửi. Mỗi sự kiện có `messageId`, `senderId` và `sentAt`.
+- Có client Qt mẫu để gửi một tin nhắn và nhận sự kiện broadcast.
 
-## Phần còn lại
+## Giao thức JSON v1
 
-Phần 50% tiếp theo có thể bổ sung broadcast từ server tới các client, định dạng/giao thức bản tin dùng chung, tích hợp với client và kiểm thử nhiều kết nối. Hiện tại server phát sự kiện tin nhắn nhận được cho ứng dụng nhưng chưa gửi broadcast.
+Client gửi:
+
+```json
+{
+  "version": 1,
+  "type": "broadcast",
+  "payload": { "text": "Xin chao ca lop" }
+}
+```
+
+Server phát sự kiện với cùng `version`, `type` và `payload`, đồng thời bổ sung `messageId`, `senderId` và thời gian UTC `sentAt`.
 
 ## Build và chạy
 
-Cần cài Qt 6.12 có module WebSockets và CMake 3.21 trở lên. Từ thư mục gốc repository, chạy:
+Cần CMake 3.21 trở lên và Qt 6.12 có module WebSockets. Từ thư mục gốc repository (điều chỉnh đường dẫn Qt cho máy của bạn):
 
 ```powershell
 cmake -S Code/WebSocketServer -B build/websocket-server -DCMAKE_PREFIX_PATH=C:/Qt/6.12.0/mingw_64
@@ -22,4 +32,12 @@ cmake --build build/websocket-server --config Release
 .\build\websocket-server\udm15_websocket_server.exe 5002
 ```
 
-Có thể bỏ `5002` để dùng cổng mặc định. Điều chỉnh đường dẫn Qt theo bộ Qt đã cài.
+Mở terminal khác để gửi một tin nhắn bằng client mẫu:
+
+```powershell
+.\build\websocket-server\udm15_websocket_client.exe ws://127.0.0.1:5002 Xin chao ca lop
+```
+
+## Trạng thái xác minh
+
+Đã hoàn tất phần triển khai Task 2. Chưa xác minh build/chạy thực tế trong môi trường này vì chưa có Qt/CMake khả dụng. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.
