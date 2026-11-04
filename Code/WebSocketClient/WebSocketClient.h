@@ -5,6 +5,7 @@
 #include <QString>
 #include <QUrl>
 #include <QWebSocket>
+#include <QTimer>
 
 class WebSocketClient final : public QObject
 {
@@ -15,6 +16,8 @@ public:
 
     void connectToServer(const QUrl &url);
     void disconnectFromServer();
+    void setAutoReconnectEnabled(bool enabled);
+    [[nodiscard]] bool autoReconnectEnabled() const;
     [[nodiscard]] bool isConnected() const;
     bool sendBroadcastText(const QString &text);
 
@@ -27,9 +30,17 @@ signals:
                            const QString &text, const QString &sentAt);
     void broadcastSent(const QString &text);
     void errorOccurred(const QString &message);
+    void reconnectScheduled(int delayMs, int attempt);
 
 private:
     void handleTextMessage(const QString &message);
+    void scheduleReconnect();
+    void openLastUrl();
 
     QWebSocket m_socket;
+    QTimer m_reconnectTimer;
+    QUrl m_lastUrl;
+    bool m_shouldStayConnected = false;
+    bool m_autoReconnectEnabled = true;
+    int m_reconnectAttempts = 0;
 };
