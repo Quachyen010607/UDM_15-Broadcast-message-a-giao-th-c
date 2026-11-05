@@ -24,12 +24,12 @@
 
 | STT | MSSV | Họ và tên | Vai trò |
 |---:|---|---|---|
-| 1 | | Đỗ Ngọc Tiến | TCP Server & Client |
-| 2 | | Ngô Anh Thư | UDP Server & Client |
-| 3 | | Nguyễn Quốc Toàn | WebSocket Server & Client |
-| 4 | | Nguyễn Trần Thiện Huy | Common & Message |
-| 5 | | Phạm Khánh Quốc | GUI Server & Client |
-| 6 | | Quách Thị Hồng Yến | Broadcast & Integration |
+| 1 | 060206006877 | Đỗ Ngọc Tiến | TCP Server & Client |
+| 2 | 091306007157 | Ngô Anh Thư | UDP Server & Client |
+| 3 | 077205009681 | Nguyễn Quốc Toàn | WebSocket Server & Client |
+| 4 | 089206007792 | Nguyễn Trần Thiện Huy | Common & Message |
+| 5 | 089206003490 | Phạm Khánh Quốc | GUI Server & Client |
+| 6 | 075307022774 | Quách Thị Hồng Yến | Broadcast & Integration |
 
 ## Giới thiệu
 
