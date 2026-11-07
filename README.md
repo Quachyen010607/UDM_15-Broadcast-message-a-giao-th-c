@@ -3,7 +3,7 @@
 
 ## Tiến độ dự án
 
-**Overall Progress: 0%**
+**Overall Progress: 30%**
 
 `░░░░░░░░░░` 30%
 
