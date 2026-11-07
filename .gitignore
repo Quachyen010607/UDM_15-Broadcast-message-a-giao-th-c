@@ -123,3 +123,5 @@ release/
 tmp/
 temp/
 UDP/build/
+UDP/build/
+NetworkUI/build/
