@@ -12,7 +12,7 @@
 | Phân tích yêu cầu | 50% | Đã bắt đầu |
 | Thiết kế kiến trúc | 0% | Chưa bắt đầu |
 | TCP Server & Client | 0% | Chưa bắt đầu |
-| UDP Server & Client | 0% | Chưa bắt đầu |
+| UDP Server & Client | 50% | Đã bắt đầu |
 | WebSocket Server & Client | 50% | Đã bắt đầu |
 | Common & Message | 0% | Chưa bắt đầu |
 | Giao diện GUI | 0% | Chưa bắt đầu |
