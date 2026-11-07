@@ -10,7 +10,7 @@
 | Hạng mục | Tiến độ | Trạng thái |
 |---|---:|---|
 | Phân tích yêu cầu | 50% | Đã bắt đầu |
-| Thiết kế kiến trúc | 0% | Chưa bắt đầu |
+| Thiết kế kiến trúc | 60% | Chưa bắt đầu |
 | TCP Server & Client | 0% | Chưa bắt đầu |
 | UDP Server & Client | 50% | Đã bắt đầu |
 | WebSocket Server & Client | 50% | Đã bắt đầu |
