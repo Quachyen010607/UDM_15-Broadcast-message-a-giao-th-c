@@ -17,6 +17,17 @@ Phần triển khai này gia cố quản lý client ở Server:
 - Khi Server đóng, đóng các socket đang quản lý, phát sự kiện ngắt kết nối và cập nhật số lượng client về 0 ngay.
 - Có bộ kiểm thử tích hợp QtTest cho nhiều client, ngắt kết nối lặp lại, giới hạn kết nối và đóng Server.
 
+## Task 5 — Kiểm thử WebSocket (đã làm 50%)
+
+Đã bổ sung kiểm thử tích hợp cho các luồng sau:
+
+- Ba client kết nối đồng thời; một client gửi JSON và cả ba client nhận broadcast cùng `messageId`.
+- Server từ chối JSON sai định dạng nhưng giữ kết nối để client tiếp tục gửi tin hợp lệ.
+- Client ngắt đột ngột; Server dọn danh sách và cho phép client kết nối lại.
+- Client kết nối tới cổng không có Server; lỗi được báo mà không tạo client giả trong danh sách.
+
+Phần còn lại: chạy suite trên môi trường Qt 6.12 và ghi nhận kết quả thực tế.
+
 ## Giao thức JSON v1
 
 Client gửi:
@@ -61,4 +72,4 @@ Các kiểm thử dùng cổng loopback ngẫu nhiên, không cần chạy Serve
 
 ## Trạng thái xác minh
 
-Đã bổ sung kiểm thử tự động cho vòng đời nhiều Client và cách Server dọn kết nối. Chưa chạy được build/kiểm thử trong môi trường hiện tại vì không có CMake/Qt trong PATH. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.
+Đã bổ sung kiểm thử tự động cho Task 4 và Task 5. Chưa chạy được build/kiểm thử trong môi trường hiện tại vì không có CMake/Qt trong PATH. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.
