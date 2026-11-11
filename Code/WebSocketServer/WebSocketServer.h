@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QAbstractSocket>
 #include <QDateTime>
 #include <QHash>
 #include <QHostAddress>
@@ -31,6 +32,8 @@ signals:
     void clientConnected(const QString &clientId, const QString &peer);
     void clientDisconnected(const QString &clientId, const QString &peer);
     void clientCountChanged(qsizetype count);
+    void clientStateChanged(const QString &clientId, QAbstractSocket::SocketState state);
+    void clientError(const QString &clientId, const QString &message);
     void textMessageReceived(const QString &clientId, const QString &message);
     void messageRejected(const QString &clientId, const QString &reason);
     void serverError(const QString &message);
@@ -46,6 +49,7 @@ private:
     };
 
     void attachClient(QWebSocket *socket);
+    bool removeClient(QWebSocket *socket);
     [[nodiscard]] static QString peerLabel(const QWebSocket *socket);
 
     QWebSocketServer m_server;
