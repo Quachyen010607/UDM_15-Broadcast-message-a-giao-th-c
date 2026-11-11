@@ -163,7 +163,7 @@ private slots:
 
         QTRY_COMPARE_WITH_TIMEOUT(firstMessages.count(), 1, 3000);
         QTRY_COMPARE_WITH_TIMEOUT(secondMessages.count(), 1, 3000);
-        QTRY_COMPARE_WITH_TIMEOUT(thirdMessages.count(), 1, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(thirdMessages.count(), 1, 3000); first.close(); second.close(); third.close(); QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
         const auto firstEvent = QJsonDocument::fromJson(
             firstMessages.first().first().toString().toUtf8()).object();
         const auto secondEvent = QJsonDocument::fromJson(
@@ -198,7 +198,7 @@ private slots:
 
         client.sendTextMessage(QString::fromUtf8(
             MessageProtocol::encode(MessageProtocol::makeBroadcastRequest(QStringLiteral("still here")))));
-        QTRY_COMPARE_WITH_TIMEOUT(messagesSpy.count(), 1, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(messagesSpy.count(), 1, 3000); client.close(); QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
         const auto event = QJsonDocument::fromJson(messagesSpy.first().first().toString().toUtf8()).object();
         QCOMPARE(event.value(QStringLiteral("payload")).toObject()
                      .value(QStringLiteral("text")).toString(), QStringLiteral("still here"));
