@@ -11,12 +11,12 @@
 |---|---:|---|
 | Phân tích yêu cầu | 50% | Đã bắt đầu |
 | Thiết kế kiến trúc | 60% | Chưa bắt đầu |
-| TCP Server & Client | 0% | Chưa bắt đầu |
+| TCP Server & Client | 50% | Chưa bắt đầu |
 | UDP Server & Client | 50% | Đã bắt đầu |
 | WebSocket Server & Client | 50% | Đã bắt đầu |
-| Common & Message | 0% | Chưa bắt đầu |
-| Giao diện GUI | 0% | Chưa bắt đầu |
-| Tích hợp hệ thống | 0% | Chưa bắt đầu |
+| Common & Message | 50% | Chưa bắt đầu |
+| Giao diện GUI | 50% | Chưa bắt đầu |
+| Tích hợp hệ thống | 20% | Chưa bắt đầu |
 | Kiểm thử | 0% | Chưa bắt đầu |
 | Báo cáo & thuyết trình | 0% | Chưa bắt đầu |
 
