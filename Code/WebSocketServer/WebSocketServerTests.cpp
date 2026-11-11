@@ -126,7 +126,7 @@ private slots:
         rejected.open(localUrl(server));
         QTRY_COMPARE_WITH_TIMEOUT(rejected.state(), QAbstractSocket::UnconnectedState, 3000);
         QCOMPARE(server.clientCount(), 1);
-        QCOMPARE(server.clientIds().size(), 1);
+        QCOMPARE(server.clientIds().size(), 1); accepted.close(); QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000); rejected.abort();
     }
 
     void broadcastsMessageToEveryConnectedClient()
