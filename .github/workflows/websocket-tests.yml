@@ -1,0 +1,41 @@
+name: WebSocket tests
+
+on:
+  push:
+    branches:
+      - codex/task-5-websocket-tests
+    paths:
+      - "Code/WebSocketServer/**"
+      - ".github/workflows/websocket-tests.yml"
+  pull_request:
+    paths:
+      - "Code/WebSocketServer/**"
+      - ".github/workflows/websocket-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  websocket-tests:
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Install Qt 6.12
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: 6.12.0
+          host: linux
+          target: desktop
+          arch: linux_gcc_64
+          modules: qtwebsockets
+
+      - name: Configure
+        run: cmake -S Code/WebSocketServer -B build/websocket-server -DBUILD_TESTING=ON -DCMAKE_PREFIX_PATH="$QT_ROOT_DIR"
+
+      - name: Build
+        run: cmake --build build/websocket-server --parallel
+
+      - name: Run tests
+        run: ctest --test-dir build/websocket-server --output-on-failure
