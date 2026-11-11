@@ -6,6 +6,20 @@
 
 namespace {
 constexpr quint16 DefaultPort = 5002;
+
+QString stateName(QAbstractSocket::SocketState state)
+{
+    switch (state) {
+    case QAbstractSocket::UnconnectedState: return QStringLiteral("unconnected");
+    case QAbstractSocket::HostLookupState: return QStringLiteral("host lookup");
+    case QAbstractSocket::ConnectingState: return QStringLiteral("connecting");
+    case QAbstractSocket::ConnectedState: return QStringLiteral("connected");
+    case QAbstractSocket::BoundState: return QStringLiteral("bound");
+    case QAbstractSocket::ClosingState: return QStringLiteral("closing");
+    case QAbstractSocket::ListeningState: return QStringLiteral("listening");
+    }
+    return QStringLiteral("unknown");
+}
 }
 
 int main(int argc, char *argv[])
@@ -27,24 +41,32 @@ int main(int argc, char *argv[])
     WebSocketServer server(64);
     QObject::connect(&server, &WebSocketServer::clientConnected,
                      [](const QString &id, const QString &peer) {
-                         qInfo().noquote() << id << "connected from" << peer;
-                     });
+        qInfo().noquote() << id << "connected from" << peer;
+    });
     QObject::connect(&server, &WebSocketServer::clientDisconnected,
                      [](const QString &id, const QString &peer) {
-                         qInfo().noquote() << id << "disconnected from" << peer;
-                     });
+        qInfo().noquote() << id << "disconnected from" << peer;
+    });
+    QObject::connect(&server, &WebSocketServer::clientStateChanged,
+                     [](const QString &id, QAbstractSocket::SocketState state) {
+        qInfo().noquote() << id << "state:" << stateName(state);
+    });
+    QObject::connect(&server, &WebSocketServer::clientError,
+                     [](const QString &id, const QString &message) {
+        qWarning().noquote() << id << "error:" << message;
+    });
     QObject::connect(&server, &WebSocketServer::clientCountChanged,
                      [](qsizetype count) {
-                         qInfo() << "Active clients:" << count;
-                     });
+        qInfo() << "Active clients:" << count;
+    });
     QObject::connect(&server, &WebSocketServer::textMessageReceived,
                      [](const QString &id, const QString &message) {
-                         qInfo().noquote() << "Message from" << id << ':' << message;
-                     });
+        qInfo().noquote() << "Message from" << id << ':' << message;
+    });
     QObject::connect(&server, &WebSocketServer::serverError,
                      [](const QString &message) {
-                         qWarning().noquote() << "WebSocket error:" << message;
-                     });
+        qWarning().noquote() << "WebSocket server error:" << message;
+    });
 
     if (!server.listen(QHostAddress::AnyIPv4, port))
         return 1;

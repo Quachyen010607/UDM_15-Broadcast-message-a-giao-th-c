@@ -8,6 +8,15 @@
 - Phát bản tin hợp lệ đến tất cả client đang kết nối, gồm cả người gửi. Mỗi sự kiện có `messageId`, `senderId` và `sentAt`.
 - Có client Qt mẫu để gửi một tin nhắn và nhận sự kiện broadcast.
 
+## Task 4 — Xử lý vòng đời kết nối (đã làm 50%)
+
+Phần triển khai này gia cố quản lý client ở Server:
+
+- Theo dõi và phát sự kiện khi trạng thái socket client thay đổi, đồng thời ghi nhận lỗi gắn với đúng client ID.
+- Gỡ client khỏi danh sách đúng một lần khi socket ngắt kết nối hoặc bị hủy ngoài dự kiến.
+- Khi Server đóng, đóng các socket đang quản lý, phát sự kiện ngắt kết nối và cập nhật số lượng client về 0 ngay.
+- Phần còn lại của Task 4: kiểm thử nhiều client, đóng/ngắt liên tục và xác minh runtime.
+
 ## Giao thức JSON v1
 
 Client gửi:
@@ -40,4 +49,4 @@ Mở terminal khác để gửi một tin nhắn bằng client mẫu:
 
 ## Trạng thái xác minh
 
-Đã hoàn tất phần triển khai Task 2. Chưa xác minh build/chạy thực tế trong môi trường này vì chưa có Qt/CMake khả dụng. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.
+Chưa xác minh build/chạy thực tế trong môi trường này vì chưa có Qt/CMake khả dụng. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.

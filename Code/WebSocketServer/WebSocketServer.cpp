@@ -16,12 +16,18 @@ WebSocketServer::WebSocketServer(qsizetype maxConnections, QObject *parent)
             [this](QWebSocketProtocol::CloseCode) { emit serverError(m_server.errorString()); });
 }
 
-WebSocketServer::~WebSocketServer() { close(); }
+WebSocketServer::~WebSocketServer()
+{
+    close();
+}
 
 bool WebSocketServer::listen(const QHostAddress &address, quint16 port)
 {
-    if (m_server.isListening()) close();
-    if (m_server.listen(address, port)) return true;
+    if (m_server.isListening())
+        close();
+    if (m_server.listen(address, port))
+        return true;
+
     emit serverError(m_server.errorString());
     return false;
 }
@@ -29,12 +35,19 @@ bool WebSocketServer::listen(const QHostAddress &address, quint16 port)
 void WebSocketServer::close()
 {
     m_server.close();
+
     const auto sockets = m_clients.keys();
     for (QWebSocket *socket : sockets) {
-        if (socket && socket->state() == QAbstractSocket::ConnectedState)
-            socket->close(QWebSocketProtocol::CloseCodeGoingAway, QStringLiteral("Server is shutting down"));
-        else if (socket)
-            socket->deleteLater();
+        if (!socket)
+            continue;
+
+        // Remove bookkeeping synchronously so observers see an empty server on return.
+        removeClient(socket);
+        if (socket->state() != QAbstractSocket::UnconnectedState) {
+            socket->close(QWebSocketProtocol::CloseCodeGoingAway,
+                          QStringLiteral("Server is shutting down"));
+        }
+        socket->deleteLater();
     }
 }
 
@@ -56,10 +69,12 @@ qsizetype WebSocketServer::broadcastText(const QString &senderId, const QString 
     const QString wireText = QString::fromUtf8(
         MessageProtocol::encode(MessageProtocol::makeBroadcastEvent(senderId, text)));
     qsizetype delivered = 0;
-    for (QWebSocket *socket : m_clients.keys()) {
+    const auto sockets = m_clients.keys();
+    for (QWebSocket *socket : sockets) {
         if (socket && socket->state() == QAbstractSocket::ConnectedState &&
-            socket->sendTextMessage(wireText) >= 0)
+            socket->sendTextMessage(wireText) >= 0) {
             ++delivered;
+        }
     }
     return delivered;
 }
@@ -68,7 +83,9 @@ void WebSocketServer::acceptPendingConnections()
 {
     while (m_server.hasPendingConnections()) {
         QWebSocket *socket = m_server.nextPendingConnection();
-        if (!socket) continue;
+        if (!socket)
+            continue;
+
         if (m_clients.size() >= m_maxConnections) {
             socket->close(QWebSocketProtocol::CloseCodePolicyViolated,
                           QStringLiteral("Maximum client count reached"));
@@ -81,42 +98,68 @@ void WebSocketServer::acceptPendingConnections()
 
 void WebSocketServer::attachClient(QWebSocket *socket)
 {
+    if (!socket || m_clients.contains(socket))
+        return;
+
     ClientInfo info;
     info.id = QStringLiteral("client-%1").arg(++m_nextClientId);
     info.peer = peerLabel(socket);
     info.connectedAt = QDateTime::currentDateTimeUtc();
     m_clients.insert(socket, info);
 
+    connect(socket, &QWebSocket::stateChanged, this,
+            [this, socket](QAbstractSocket::SocketState state) {
+        const auto it = m_clients.constFind(socket);
+        if (it != m_clients.cend())
+            emit clientStateChanged(it->id, state);
+    });
+    connect(socket, &QWebSocket::errorOccurred, this,
+            [this, socket](QAbstractSocket::SocketError) {
+        const auto it = m_clients.constFind(socket);
+        if (it != m_clients.cend())
+            emit clientError(it->id, socket->errorString());
+    });
     connect(socket, &QWebSocket::textMessageReceived, this,
             [this, socket](const QString &wireText) {
-                const auto it = m_clients.constFind(socket);
-                if (it == m_clients.cend()) return;
+        const auto it = m_clients.constFind(socket);
+        if (it == m_clients.cend())
+            return;
 
-                QString text;
-                QString error;
-                if (!MessageProtocol::parseBroadcastRequest(wireText, &text, &error)) {
-                    emit messageRejected(it->id, error);
-                    return;
-                }
-                emit textMessageReceived(it->id, text);
-                broadcastText(it->id, text);
-            });
-    connect(socket, &QWebSocket::disconnected, this, [this, socket]() {
-        const auto it = m_clients.find(socket);
-        if (it == m_clients.end()) {
-            socket->deleteLater();
+        QString text;
+        QString error;
+        if (!MessageProtocol::parseBroadcastRequest(wireText, &text, &error)) {
+            emit messageRejected(it->id, error);
             return;
         }
-        const QString id = it->id;
-        const QString peer = it->peer;
-        m_clients.erase(it);
-        emit clientDisconnected(id, peer);
-        emit clientCountChanged(m_clients.size());
-        socket->deleteLater();
+        emit textMessageReceived(it->id, text);
+        broadcastText(it->id, text);
+    });
+    connect(socket, &QWebSocket::disconnected, this, [this, socket]() {
+        if (removeClient(socket))
+            socket->deleteLater();
+    });
+    connect(socket, &QObject::destroyed, this, [this, socket]() {
+        // Covers unexpected destruction without dereferencing the dying socket.
+        removeClient(socket);
     });
 
     emit clientConnected(info.id, info.peer);
+    emit clientStateChanged(info.id, socket->state());
     emit clientCountChanged(m_clients.size());
+}
+
+bool WebSocketServer::removeClient(QWebSocket *socket)
+{
+    const auto it = m_clients.find(socket);
+    if (it == m_clients.end())
+        return false;
+
+    const QString id = it->id;
+    const QString peer = it->peer;
+    m_clients.erase(it);
+    emit clientDisconnected(id, peer);
+    emit clientCountChanged(m_clients.size());
+    return true;
 }
 
 QString WebSocketServer::peerLabel(const QWebSocket *socket)
