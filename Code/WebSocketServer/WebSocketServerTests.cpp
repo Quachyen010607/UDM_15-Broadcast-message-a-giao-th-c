@@ -32,8 +32,17 @@ private slots:
 
         QTRY_COMPARE_WITH_TIMEOUT(connectedSpy.count(), 2, 3000);
         QCOMPARE(server.clientCount(), 2);
-        const QString firstId = connectedSpy.at(0).at(0).toString();
-        const QString secondId = connectedSpy.at(1).at(0).toString();
+        QString firstId;
+        QString secondId;
+        const QString firstPeerPort = QStringLiteral(":%1").arg(first.localPort());
+        for (const auto &args : connectedSpy) {
+            const QString clientId = args.at(0).toString();
+            const QString peer = args.at(1).toString();
+            if (peer.endsWith(firstPeerPort))
+                firstId = clientId;
+            else
+                secondId = clientId;
+        }
         QVERIFY(!firstId.isEmpty());
         QVERIFY(!secondId.isEmpty());
         QVERIFY(firstId != secondId);
