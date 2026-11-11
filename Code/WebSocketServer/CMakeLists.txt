@@ -21,3 +21,19 @@ add_executable(udm15_websocket_client
     MessageProtocol.h
 )
 target_link_libraries(udm15_websocket_client PRIVATE Qt6::Core Qt6::WebSockets)
+
+include(CTest)
+if(BUILD_TESTING)
+    find_package(Qt6 6.12 REQUIRED COMPONENTS Test)
+
+    add_executable(udm15_websocket_server_tests
+        WebSocketServerTests.cpp
+        WebSocketServer.cpp
+        WebSocketServer.h
+        MessageProtocol.h
+    )
+    target_link_libraries(udm15_websocket_server_tests PRIVATE
+        Qt6::Core Qt6::WebSockets Qt6::Test
+    )
+    add_test(NAME websocket_server_lifecycle COMMAND udm15_websocket_server_tests)
+endif()

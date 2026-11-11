@@ -8,14 +8,14 @@
 - Phát bản tin hợp lệ đến tất cả client đang kết nối, gồm cả người gửi. Mỗi sự kiện có `messageId`, `senderId` và `sentAt`.
 - Có client Qt mẫu để gửi một tin nhắn và nhận sự kiện broadcast.
 
-## Task 4 — Xử lý vòng đời kết nối (đã làm 50%)
+## Task 4 — Xử lý vòng đời kết nối (đã triển khai)
 
 Phần triển khai này gia cố quản lý client ở Server:
 
 - Theo dõi và phát sự kiện khi trạng thái socket client thay đổi, đồng thời ghi nhận lỗi gắn với đúng client ID.
 - Gỡ client khỏi danh sách đúng một lần khi socket ngắt kết nối hoặc bị hủy ngoài dự kiến.
 - Khi Server đóng, đóng các socket đang quản lý, phát sự kiện ngắt kết nối và cập nhật số lượng client về 0 ngay.
-- Phần còn lại của Task 4: kiểm thử nhiều client, đóng/ngắt liên tục và xác minh runtime.
+- Có bộ kiểm thử tích hợp QtTest cho nhiều client, ngắt kết nối lặp lại, giới hạn kết nối và đóng Server.
 
 ## Giao thức JSON v1
 
@@ -47,6 +47,18 @@ Mở terminal khác để gửi một tin nhắn bằng client mẫu:
 .\build\websocket-server\udm15_websocket_client.exe ws://127.0.0.1:5002 Xin chao ca lop
 ```
 
+## Chạy kiểm thử vòng đời Client
+
+Từ thư mục gốc repository:
+
+```powershell
+cmake -S Code/WebSocketServer -B build/websocket-server -DCMAKE_PREFIX_PATH=C:/Qt/6.12.0/mingw_64 -DBUILD_TESTING=ON
+cmake --build build/websocket-server --config Release
+ctest --test-dir build/websocket-server -C Release --output-on-failure
+```
+
+Các kiểm thử dùng cổng loopback ngẫu nhiên, không cần chạy Server riêng.
+
 ## Trạng thái xác minh
 
-Chưa xác minh build/chạy thực tế trong môi trường này vì chưa có Qt/CMake khả dụng. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.
+Đã bổ sung kiểm thử tự động cho vòng đời nhiều Client và cách Server dọn kết nối. Chưa chạy được build/kiểm thử trong môi trường hiện tại vì không có CMake/Qt trong PATH. TLS/WSS và xác thực client chưa nằm trong phạm vi triển khai hiện tại.
