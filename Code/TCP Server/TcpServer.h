@@ -1,20 +1,14 @@
 #pragma once
-#include <QDateTime>
+
+#include "../common/ClientInfo.h"
+#include "Message.h"
+
 #include <QHash>
 #include <QList>
 #include <QObject>
 #include <QString>
 #include <QTcpServer>
 #include <QTcpSocket>
-
-#include "Message.h"
-
-// Thong tin 1 client dang ket noi
-struct ClientInfo
-{
-    QString address;
-    QDateTime connectedAt;
-};
 
 // Ket qua gui cho 1 client
 struct SendResult
@@ -66,6 +60,7 @@ private:
 
     QTcpServer m_server;
     QHash<QTcpSocket*, ClientInfo> m_clients;
+    quint64 m_nextClientId = 0;
     QString m_error;
     bool m_relayEnabled = false;
     bool m_stopping = false;
