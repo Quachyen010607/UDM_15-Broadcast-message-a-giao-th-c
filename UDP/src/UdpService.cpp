@@ -1,9 +1,9 @@
 #include "UdpService.h"
 
 #include "../../Code/common/Message.h"
+#include "../../Code/common/MessageSerializer.h"
 
 #include <QJsonDocument>
-#include <QJsonParseError>
 
 UdpService::UdpService(QObject *parent) : QObject(parent) {
     connect(&m_receiver, &QUdpSocket::readyRead,
@@ -46,11 +46,28 @@ quint16 UdpService::listeningPort() const { return m_receiver.localPort(); }
 
 bool UdpService::sendJson(const QJsonObject &payload, quint16 destinationPort,
                           const QHostAddress &destination) {
+    return sendDatagram(QJsonDocument(payload).toJson(QJsonDocument::Compact),
+                        destinationPort, destination);
+}
+
+bool UdpService::sendMessage(const QString &message, quint16 destinationPort,
+                             const QHostAddress &destination) {
+    QString error;
+    const auto bytes = udm15::MessageSerializer::serialize(
+        udm15::Message::broadcastRequest(message), &error);
+    if (!bytes) {
+        emit errorOccurred(error);
+        return false;
+    }
+    return sendDatagram(*bytes, destinationPort, destination);
+}
+
+bool UdpService::sendDatagram(const QByteArray &bytes, quint16 destinationPort,
+                              const QHostAddress &destination) {
     if (destinationPort == 0 || destination.isNull()) {
         emit errorOccurred("Địa chỉ đích hoặc cổng gửi không hợp lệ.");
         return false;
     }
-    QByteArray bytes = QJsonDocument(payload).toJson(QJsonDocument::Compact);
     if (bytes.size() > 1200) {
         emit errorOccurred("Gói JSON lớn hơn 1200 byte; hãy chia nhỏ để tránh phân mảnh UDP.");
         return false;
@@ -63,16 +80,6 @@ bool UdpService::sendJson(const QJsonObject &payload, quint16 destinationPort,
     emit statusChanged(QString("Đã gửi %1 byte đến %2:%3")
                        .arg(sent).arg(destination.toString()).arg(destinationPort));
     return true;
-}
-
-bool UdpService::sendMessage(const QString &message, quint16 destinationPort,
-                             const QHostAddress &destination) {
-    if (message.trimmed().isEmpty()) {
-        emit errorOccurred("Nội dung gửi không được rỗng.");
-        return false;
-    }
-    const udm15::Message envelope = udm15::Message::broadcastRequest(message);
-    return sendJson(envelope.toJson(), destinationPort, destination);
 }
 
 void UdpService::readPendingDatagrams() {
@@ -93,14 +100,8 @@ void UdpService::readPendingDatagrams() {
             emit invalidDatagram("Gói quá 1200 byte", ip, senderPort);
             continue;
         }
-        QJsonParseError parseError;
-        QJsonDocument doc = QJsonDocument::fromJson(data, &parseError);
-        if (parseError.error != QJsonParseError::NoError || !doc.isObject()) {
-            emit invalidDatagram("Dữ liệu không phải JSON object hợp lệ", ip, senderPort);
-            continue;
-        }
         QString decodeError;
-        const auto message = udm15::Message::fromJson(doc.object(), &decodeError);
+        const auto message = udm15::MessageSerializer::deserialize(data, &decodeError);
         if (!message) {
             emit invalidDatagram(decodeError, ip, senderPort);
             continue;
