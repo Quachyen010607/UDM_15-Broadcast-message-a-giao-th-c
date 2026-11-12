@@ -21,7 +21,8 @@ namespace udm15 {
 inline constexpr int MessageProtocolVersion = 1;
 inline const QString BroadcastMessageType = QStringLiteral("broadcast");
 
-struct Message {
+class Message {
+public:
     int version = MessageProtocolVersion;
     QString type = BroadcastMessageType;
     QString messageId;
