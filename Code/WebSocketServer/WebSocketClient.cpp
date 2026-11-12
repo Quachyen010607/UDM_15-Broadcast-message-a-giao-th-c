@@ -1,9 +1,8 @@
 #include "MessageProtocol.h"
+#include "../common/MessageSerializer.h"
 
 #include <QCoreApplication>
 #include <QDebug>
-#include <QJsonDocument>
-#include <QJsonParseError>
 #include <QTimer>
 #include <QUrl>
 #include <QWebSocket>
@@ -31,19 +30,24 @@ int main(int argc, char *argv[])
     });
     QObject::connect(&socket, &QWebSocket::connected, &app, [&]() {
         const QByteArray request = MessageProtocol::encode(MessageProtocol::makeBroadcastRequest(text));
+        if (request.isEmpty()) {
+            qCritical() << "Could not serialize the broadcast request";
+            app.exit(1);
+            return;
+        }
         socket.sendTextMessage(QString::fromUtf8(request));
         timeout.start(8000);
     });
     QObject::connect(&socket, &QWebSocket::textMessageReceived, &app,
                      [&](const QString &wireText) {
-        QJsonParseError parseError;
-        const QJsonDocument document = QJsonDocument::fromJson(wireText.toUtf8(), &parseError);
-        if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-            qCritical() << "Server returned an invalid JSON message";
+        QString error;
+        const auto message = udm15::MessageSerializer::deserialize(wireText.toUtf8(), &error);
+        if (!message) {
+            qCritical().noquote() << "Server returned an invalid JSON message:" << error;
             app.exit(1);
             return;
         }
-        qInfo().noquote() << "Broadcast received:" << document.toJson(QJsonDocument::Compact);
+        qInfo().noquote() << "Broadcast received:" << message->text;
         timeout.stop();
         app.quit();
     });
