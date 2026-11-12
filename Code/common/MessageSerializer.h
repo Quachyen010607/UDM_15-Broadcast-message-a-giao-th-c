@@ -25,6 +25,13 @@ public:
 
         return QJsonDocument(message.toJson()).toJson(QJsonDocument::Compact);
     }
+
+    // Parses and validates the shared JSON message envelope.
+    [[nodiscard]] static std::optional<Message> deserialize(
+        const QByteArray &json, QString *error = nullptr)
+    {
+        return Message::decode(json, error);
+    }
 };
 
 } // namespace udm15
