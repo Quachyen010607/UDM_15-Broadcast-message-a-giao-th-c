@@ -4,10 +4,11 @@
 #include "../../UDP/src/UdpService.h"
 #include "WebSocketServer.h"
 
+#include <QAbstractSocket>
+#include <QHostAddress>
 #include <QJsonDocument>
 #include <QJsonObject>
 #include <QSignalSpy>
-#include <QTcpSocket>
 #include <QTest>
 #include <QUdpSocket>
 #include <QWebSocket>
@@ -86,21 +87,38 @@ private slots:
         QCOMPARE(udpMessage->text, tcpMessage->text);
         QCOMPARE(udpMessage->version, tcpMessage->version);
         QCOMPARE(udpMessage->type, tcpMessage->type);
+        udp.stopListening();
     }
 
-    void webSocketAcceptsTheSameRequestEnvelope()
+    void webSocketBroadcastKeepsTheSharedMessageFields()
     {
         WebSocketServer server;
         QVERIFY(server.listen(QHostAddress::LocalHost, 0));
         QSignalSpy receivedSpy(&server, &WebSocketServer::textMessageReceived);
         QSignalSpy rejectedSpy(&server, &WebSocketServer::messageRejected);
         QWebSocket client;
+        QSignalSpy broadcastSpy(&client, &QWebSocket::textMessageReceived);
+        QVERIFY(broadcastSpy.isValid());
         client.open(QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(server.serverPort())));
         QTRY_COMPARE_WITH_TIMEOUT(client.state(), QAbstractSocket::ConnectedState, 3000);
-        QCOMPARE(client.sendTextMessage(QString::fromUtf8(validRequest())) >= 0, true);
+        QVERIFY(client.sendTextMessage(QString::fromUtf8(validRequest())) >= 0);
         QTRY_COMPARE_WITH_TIMEOUT(receivedSpy.count(), 1, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(broadcastSpy.count(), 1, 3000);
         QCOMPARE(rejectedSpy.count(), 0);
         QCOMPARE(receivedSpy.first().at(1).toString(), QStringLiteral("contract-check"));
+
+        QString error;
+        const auto request = udm15::MessageParser::parse(validRequest(), &error);
+        QVERIFY2(request.has_value(), qPrintable(error));
+        const QByteArray eventWire = broadcastSpy.first().first().toString().toUtf8();
+        const auto event = udm15::MessageParser::parse(eventWire, &error);
+        QVERIFY2(event.has_value(), qPrintable(error));
+        QCOMPARE(event->version, request->version);
+        QCOMPARE(event->type, request->type);
+        QCOMPARE(event->text, request->text);
+        QVERIFY(!event->messageId.isEmpty());
+        QCOMPARE(event->senderId, receivedSpy.first().at(0).toString());
+        QVERIFY(event->sentAt.isValid());
         client.close();
     }
 
