@@ -97,21 +97,21 @@ private slots:
         QSignalSpy receivedSpy(&server, &WebSocketServer::textMessageReceived);
         QSignalSpy rejectedSpy(&server, &WebSocketServer::messageRejected);
         QWebSocket client;
-        QSignalSpy broadcastSpy(&client, &QWebSocket::textMessageReceived);
-        QVERIFY(broadcastSpy.isValid());
+        QString broadcastWire;
+        connect(&client, &QWebSocket::textMessageReceived, &client,
+                [&broadcastWire](const QString &wire) { broadcastWire = wire; });
         client.open(QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(server.serverPort())));
         QTRY_COMPARE_WITH_TIMEOUT(client.state(), QAbstractSocket::ConnectedState, 3000);
         QVERIFY(client.sendTextMessage(QString::fromUtf8(validRequest())) >= 0);
         QTRY_COMPARE_WITH_TIMEOUT(receivedSpy.count(), 1, 3000);
-        QTRY_COMPARE_WITH_TIMEOUT(broadcastSpy.count(), 1, 3000);
+        QTRY_VERIFY_WITH_TIMEOUT(!broadcastWire.isEmpty(), 3000);
         QCOMPARE(rejectedSpy.count(), 0);
         QCOMPARE(receivedSpy.first().at(1).toString(), QStringLiteral("contract-check"));
 
         QString error;
         const auto request = udm15::MessageParser::parse(validRequest(), &error);
         QVERIFY2(request.has_value(), qPrintable(error));
-        const QByteArray eventWire = broadcastSpy.first().first().toString().toUtf8();
-        const auto event = udm15::MessageParser::parse(eventWire, &error);
+        const auto event = udm15::MessageParser::parse(broadcastWire.toUtf8(), &error);
         QVERIFY2(event.has_value(), qPrintable(error));
         QCOMPARE(event->version, request->version);
         QCOMPARE(event->type, request->type);
