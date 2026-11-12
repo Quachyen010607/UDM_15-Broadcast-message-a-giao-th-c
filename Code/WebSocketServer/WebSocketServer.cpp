@@ -87,8 +87,8 @@ void WebSocketServer::acceptPendingConnections()
             continue;
 
         if (m_clients.size() >= m_maxConnections) {
-            socket->close(QWebSocketProtocol::CloseCodePolicyViolated,
-                          QStringLiteral("Maximum client count reached"));
+            socket->close(QWebSocketProtocol::CloseCodePolicyViolated, QStringLiteral("Maximum client count reached"));
+                          // reject over-limit client
             socket->deleteLater();
             continue;
         }

@@ -1,6 +1,10 @@
 #include "WebSocketServer.h"
+#include "MessageProtocol.h"
 
+#include <QJsonDocument>
+#include <QJsonObject>
 #include <QSignalSpy>
+#include <QTcpServer>
 #include <QTest>
 #include <QWebSocket>
 
@@ -122,7 +126,124 @@ private slots:
         rejected.open(localUrl(server));
         QTRY_COMPARE_WITH_TIMEOUT(rejected.state(), QAbstractSocket::UnconnectedState, 3000);
         QCOMPARE(server.clientCount(), 1);
-        QCOMPARE(server.clientIds().size(), 1);
+        QCOMPARE(server.clientIds().size(), 1); accepted.close(); QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000); rejected.abort();
+    }
+
+    void broadcastsMessageToEveryConnectedClient()
+    {
+        WebSocketServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+        QSignalSpy connectedSpy(&server, &WebSocketServer::clientConnected);
+        QWebSocket first;
+        QWebSocket second;
+        QWebSocket third;
+        QSignalSpy firstMessages(&first, &QWebSocket::textMessageReceived);
+        QSignalSpy secondMessages(&second, &QWebSocket::textMessageReceived);
+        QSignalSpy thirdMessages(&third, &QWebSocket::textMessageReceived);
+        first.open(localUrl(server));
+        second.open(localUrl(server));
+        third.open(localUrl(server));
+
+        QTRY_COMPARE_WITH_TIMEOUT(connectedSpy.count(), 3, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 3, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(first.state(), QAbstractSocket::ConnectedState, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(second.state(), QAbstractSocket::ConnectedState, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(third.state(), QAbstractSocket::ConnectedState, 3000);
+
+        QString senderId;
+        const QString firstPeerPort = QStringLiteral(":%1").arg(first.localPort());
+        for (const auto &args : connectedSpy) {
+            if (args.at(1).toString().endsWith(firstPeerPort))
+                senderId = args.at(0).toString();
+        }
+        QVERIFY(!senderId.isEmpty());
+
+        first.sendTextMessage(QString::fromUtf8(
+            MessageProtocol::encode(MessageProtocol::makeBroadcastRequest(QStringLiteral("hello all")))));
+
+        QTRY_COMPARE_WITH_TIMEOUT(firstMessages.count(), 1, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(secondMessages.count(), 1, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(thirdMessages.count(), 1, 3000); first.close(); second.close(); third.close(); QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
+        const auto firstEvent = QJsonDocument::fromJson(
+            firstMessages.first().first().toString().toUtf8()).object();
+        const auto secondEvent = QJsonDocument::fromJson(
+            secondMessages.first().first().toString().toUtf8()).object();
+        const auto thirdEvent = QJsonDocument::fromJson(
+            thirdMessages.first().first().toString().toUtf8()).object();
+        QCOMPARE(firstEvent.value(QStringLiteral("type")).toString(), QStringLiteral("broadcast"));
+        QCOMPARE(firstEvent.value(QStringLiteral("senderId")).toString(), senderId);
+        QCOMPARE(firstEvent.value(QStringLiteral("payload")).toObject()
+                     .value(QStringLiteral("text")).toString(), QStringLiteral("hello all"));
+        QVERIFY(!firstEvent.value(QStringLiteral("messageId")).toString().isEmpty());
+        QVERIFY(!firstEvent.value(QStringLiteral("sentAt")).toString().isEmpty());
+        QCOMPARE(secondEvent.value(QStringLiteral("messageId")), firstEvent.value(QStringLiteral("messageId")));
+        QCOMPARE(thirdEvent.value(QStringLiteral("messageId")), firstEvent.value(QStringLiteral("messageId")));
+    }
+
+    void malformedMessageIsRejectedAndClientCanContinue()
+    {
+        WebSocketServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+        QSignalSpy rejectedSpy(&server, &WebSocketServer::messageRejected);
+        QWebSocket client;
+        QSignalSpy messagesSpy(&client, &QWebSocket::textMessageReceived);
+        client.open(localUrl(server));
+        QTRY_COMPARE_WITH_TIMEOUT(client.state(), QAbstractSocket::ConnectedState, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 1, 3000);
+
+        client.sendTextMessage(QStringLiteral("{not valid JSON"));
+        QTRY_COMPARE_WITH_TIMEOUT(rejectedSpy.count(), 1, 3000);
+        QCOMPARE(server.clientCount(), 1);
+        QCOMPARE(client.state(), QAbstractSocket::ConnectedState);
+
+        client.sendTextMessage(QString::fromUtf8(
+            MessageProtocol::encode(MessageProtocol::makeBroadcastRequest(QStringLiteral("still here")))));
+        QTRY_COMPARE_WITH_TIMEOUT(messagesSpy.count(), 1, 3000); client.close(); QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
+        const auto event = QJsonDocument::fromJson(messagesSpy.first().first().toString().toUtf8()).object();
+        QCOMPARE(event.value(QStringLiteral("payload")).toObject()
+                     .value(QStringLiteral("text")).toString(), QStringLiteral("still here"));
+    }
+
+    void abruptDisconnectIsCleanedAndClientCanReconnect()
+    {
+        WebSocketServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+        QSignalSpy disconnectedSpy(&server, &WebSocketServer::clientDisconnected);
+        QWebSocket first;
+        first.open(localUrl(server));
+        QTRY_COMPARE_WITH_TIMEOUT(first.state(), QAbstractSocket::ConnectedState, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 1, 3000);
+
+        first.abort();
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(disconnectedSpy.count(), 1, 3000);
+
+        QWebSocket reconnected;
+        reconnected.open(localUrl(server));
+        QTRY_COMPARE_WITH_TIMEOUT(reconnected.state(), QAbstractSocket::ConnectedState, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 1, 3000);
+        reconnected.close();
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
+    }
+
+    void refusedConnectionReportsErrorWithoutRegisteringClient()
+    {
+        WebSocketServer server;
+        QVERIFY(server.listen(QHostAddress::LocalHost, 0));
+        QTcpServer unusedPort;
+        QVERIFY(unusedPort.listen(QHostAddress::LocalHost, 0));
+        const quint16 port = unusedPort.serverPort();
+        unusedPort.close();
+
+        QWebSocket client;
+        QSignalSpy errorSpy(&client, &QWebSocket::errorOccurred);
+        const QUrl unavailableUrl(QStringLiteral("ws://127.0.0.1:%1").arg(port));
+        client.open(unavailableUrl);
+
+        QTRY_VERIFY_WITH_TIMEOUT(errorSpy.count() > 0, 3000);
+        QCOMPARE(server.clientCount(), 0);
+        QVERIFY(client.state() == QAbstractSocket::UnconnectedState ||
+                client.state() == QAbstractSocket::ConnectingState);
     }
 };
 
