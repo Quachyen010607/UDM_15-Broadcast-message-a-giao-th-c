@@ -1,9 +1,9 @@
 #include "UdpService.h"
 
-#include <QDateTime>
+#include "../../Code/common/Message.h"
+
 #include <QJsonDocument>
 #include <QJsonParseError>
-#include <QUuid>
 
 UdpService::UdpService(QObject *parent) : QObject(parent) {
     connect(&m_receiver, &QUdpSocket::readyRead,
@@ -71,12 +71,8 @@ bool UdpService::sendMessage(const QString &message, quint16 destinationPort,
         emit errorOccurred("Nội dung gửi không được rỗng.");
         return false;
     }
-    QJsonObject payload;
-    payload["type"] = "udp_message";
-    payload["id"] = QUuid::createUuid().toString(QUuid::WithoutBraces);
-    payload["message"] = message;
-    payload["timestamp"] = QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs);
-    return sendJson(payload, destinationPort, destination);
+    const udm15::Message envelope = udm15::Message::broadcastRequest(message);
+    return sendJson(envelope.toJson(), destinationPort, destination);
 }
 
 void UdpService::readPendingDatagrams() {
@@ -103,12 +99,12 @@ void UdpService::readPendingDatagrams() {
             emit invalidDatagram("Dữ liệu không phải JSON object hợp lệ", ip, senderPort);
             continue;
         }
-        const QJsonObject obj = doc.object();
-        if (obj.value("type").toString() != "udp_message" ||
-            !obj.value("message").isString()) {
-            emit invalidDatagram("Thiếu type=udp_message hoặc message dạng chuỗi", ip, senderPort);
+        QString decodeError;
+        const auto message = udm15::Message::fromJson(doc.object(), &decodeError);
+        if (!message) {
+            emit invalidDatagram(decodeError, ip, senderPort);
             continue;
         }
-        emit messageReceived(obj, ip, senderPort);
+        emit messageReceived(message->toJson(), ip, senderPort);
     }
 }
