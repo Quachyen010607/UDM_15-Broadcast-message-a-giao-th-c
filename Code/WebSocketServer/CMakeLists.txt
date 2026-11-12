@@ -12,6 +12,7 @@ add_executable(udm15_websocket_server
     main.cpp
     WebSocketServer.cpp
     WebSocketServer.h
+    ../common/ClientInfo.h
     MessageProtocol.h
 )
 target_link_libraries(udm15_websocket_server PRIVATE Qt6::Core Qt6::WebSockets)
@@ -30,6 +31,7 @@ if(BUILD_TESTING)
         WebSocketServerTests.cpp
         WebSocketServer.cpp
         WebSocketServer.h
+        ../common/ClientInfo.h
         MessageProtocol.h
     )
     target_link_libraries(udm15_websocket_server_tests PRIVATE
