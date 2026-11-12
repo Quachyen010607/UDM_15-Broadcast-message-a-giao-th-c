@@ -20,7 +20,6 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     setWindowTitle("UDM_15 - TCP Server (QTcpServer)");
     resize(900, 620);
 
-    // --- Hang 1: cong + Start/Stop ---
     m_portSpin = new QSpinBox;
     m_portSpin->setRange(1024, 65535);
     m_portSpin->setValue(5000);
@@ -37,13 +36,10 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     serverRow->addWidget(m_relayCheck);
     serverRow->addWidget(m_statusLabel, 1);
 
-    // --- Hang 2: nhap message ---
     m_messageEdit = new QLineEdit;
     m_messageEdit->setPlaceholderText("Nhap noi dung message...");
-
     m_typeCombo = new QComboBox;
     m_typeCombo->addItems({ "Text", "Alert", "Info" });
-
     m_sendButton = new QPushButton("Broadcast");
     m_sendButton->setEnabled(false);
 
@@ -53,7 +49,6 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     sendRow->addWidget(m_typeCombo);
     sendRow->addWidget(m_sendButton);
 
-    // --- Bang client va bang ket qua ---
     m_clientTable = new QTableWidget(0, 3);
     m_clientTable->setHorizontalHeaderLabels({ "Protocol", "Client", "Connected at" });
     m_clientTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -80,7 +75,6 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     tables->addLayout(leftBox, 1);
     tables->addLayout(rightBox, 1);
 
-    // --- Log ---
     m_logEdit = new QPlainTextEdit;
     m_logEdit->setReadOnly(true);
     m_logEdit->setMaximumHeight(120);
@@ -92,7 +86,6 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
     root->addWidget(new QLabel("Log"));
     root->addWidget(m_logEdit);
 
-    // --- Ket noi signal/slot ---
     connect(m_startButton, &QPushButton::clicked, this, &MainWindow::onStartStop);
     connect(m_sendButton, &QPushButton::clicked, this, &MainWindow::onSend);
     connect(m_messageEdit, &QLineEdit::returnPressed, this, &MainWindow::onSend);
@@ -108,13 +101,9 @@ MainWindow::MainWindow(QWidget* parent) : QWidget(parent)
 void MainWindow::onStartStop()
 {
     if (m_server.isListening())
-    {
         m_server.stop();
-    }
     else if (!m_server.start(static_cast<quint16>(m_portSpin->value())))
-    {
-        QMessageBox::warning(this, "UDM_15", "Khong the khoi dong server:\n" + m_server.errorString());
-    }
+        QMessageBox::warning(this, "UDM_15", "Khong the khoi dong server: " + m_server.errorString());
 
     refreshClients();
     updateStatus();
@@ -122,23 +111,17 @@ void MainWindow::onStartStop()
 
 void MainWindow::onSend()
 {
-    QString text = m_messageEdit->text().trimmed();
+    const QString text = m_messageEdit->text().trimmed();
     if (!m_server.isListening() || text.isEmpty())
-    {
         return;
-    }
 
-    Message msg = Message::create(text, m_typeCombo->currentText());
-    QList<SendResult> results = m_server.broadcast(msg);
+    const Message msg = Message::create(text, m_typeCombo->currentText());
+    const QList<SendResult> results = m_server.broadcast(msg);
 
     if (results.isEmpty())
-    {
         addResultRow("-", "Khong co client nao online", false);
-    }
-    for (const SendResult& r : results)
-    {
-        addResultRow(r.client, r.success ? "OK" : "FAIL: " + r.error, r.success);
-    }
+    for (const SendResult& result : results)
+        addResultRow(result.client, result.success ? "OK" : "FAIL: " + result.error, result.success);
 
     m_messageEdit->clear();
     m_messageEdit->setFocus();
@@ -148,13 +131,13 @@ void MainWindow::refreshClients()
 {
     m_clientTable->setRowCount(0);
     const QList<ClientInfo> list = m_server.clients();
-    for (const ClientInfo& c : list)
-    {
-        int row = m_clientTable->rowCount();
+    for (const ClientInfo& client : list) {
+        const int row = m_clientTable->rowCount();
         m_clientTable->insertRow(row);
         m_clientTable->setItem(row, 0, new QTableWidgetItem("TCP"));
-        m_clientTable->setItem(row, 1, new QTableWidgetItem(c.address));
-        m_clientTable->setItem(row, 2, new QTableWidgetItem(c.connectedAt.toString("HH:mm:ss")));
+        m_clientTable->setItem(row, 1, new QTableWidgetItem(client.peerAddress()));
+        m_clientTable->setItem(row, 2, new QTableWidgetItem(
+            client.connectedAt().toLocalTime().toString("HH:mm:ss")));
     }
     updateStatus();
 }
@@ -166,34 +149,28 @@ void MainWindow::appendLog(const QString& text)
 
 void MainWindow::updateStatus()
 {
-    bool running = m_server.isListening();
-
+    const bool running = m_server.isListening();
     m_startButton->setText(running ? "Stop" : "Start");
     m_portSpin->setEnabled(!running);
     m_sendButton->setEnabled(running);
 
-    if (running)
-    {
+    if (running) {
         m_statusLabel->setText("TCP: ON (port " + QString::number(m_server.port()) + ") - " +
                                QString::number(m_server.clientCount()) + " client");
-    }
-    else
-    {
+    } else {
         m_statusLabel->setText("TCP: OFF");
     }
 }
 
 void MainWindow::addResultRow(const QString& client, const QString& result, bool success)
 {
-    int row = m_resultTable->rowCount();
+    const int row = m_resultTable->rowCount();
     m_resultTable->insertRow(row);
 
     QTableWidgetItem* timeItem = new QTableWidgetItem(QDateTime::currentDateTime().toString("HH:mm:ss"));
     QTableWidgetItem* clientItem = new QTableWidgetItem(client);
     QTableWidgetItem* resultItem = new QTableWidgetItem(result);
-
-    QBrush color(success ? Qt::darkGreen : Qt::red);
-    resultItem->setForeground(color);
+    resultItem->setForeground(QBrush(success ? Qt::darkGreen : Qt::red));
 
     m_resultTable->setItem(row, 0, timeItem);
     m_resultTable->setItem(row, 1, clientItem);
