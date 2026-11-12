@@ -43,10 +43,10 @@ private slots:
         QTRY_COMPARE_WITH_TIMEOUT(received.count(), 1, 3000);
         const QList<QVariant> arguments = received.takeFirst();
         const QJsonObject obj = qvariant_cast<QJsonObject>(arguments.at(0));
-        QCOMPARE(obj.value("type").toString(), QString("udp_message"));
-        QCOMPARE(obj.value("message").toString(), QString("Xin chao UDP"));
-        QVERIFY(!obj.value("id").toString().isEmpty());
-        QVERIFY(!obj.value("timestamp").toString().isEmpty());
+        QCOMPARE(obj.value("version").toInt(), 1);
+        QCOMPARE(obj.value("type").toString(), QString("broadcast"));
+        QCOMPARE(obj.value("payload").toObject().value("text").toString(), QString("Xin chao UDP"));
+        QVERIFY(!obj.contains("messageId")); // client request uses the shared request form
 
         receiver.stopListening();
         QVERIFY(!receiver.isListening());
@@ -66,7 +66,7 @@ private slots:
         QCOMPARE(sender.writeDatagram(malformed, QHostAddress::LocalHost, port), qint64(malformed.size()));
         QTRY_COMPARE_WITH_TIMEOUT(invalid.count(), 1, 3000);
 
-        const QByteArray wrongSchema = R"({"type":"other","message":"hello"})";
+        const QByteArray wrongSchema = R"({"version":1,"type":"other","payload":{"text":"hello"}})";
         QCOMPARE(sender.writeDatagram(wrongSchema, QHostAddress::LocalHost, port), qint64(wrongSchema.size()));
         QTRY_COMPARE_WITH_TIMEOUT(invalid.count(), 2, 3000);
     }
