@@ -1,16 +1,16 @@
 #pragma once
 
 #include "../common/Message.h"
+#include "../common/MessageSerializer.h"
 
-#include <QJsonDocument>
 #include <QJsonObject>
 #include <QString>
 
 namespace MessageProtocol {
 constexpr int Version = udm15::MessageProtocolVersion;
 
-// Compatibility helpers for the WebSocket module; serialization and validation
-// are delegated to the shared transport-independent Message model.
+// Compatibility helpers for the WebSocket module; wire encoding is delegated
+// to the shared MessageSerializer.
 inline QJsonObject makeBroadcastRequest(const QString &text)
 {
     return udm15::Message::broadcastRequest(text).toJson();
@@ -21,14 +21,19 @@ inline QJsonObject makeBroadcastEvent(const QString &senderId, const QString &te
     return udm15::Message::broadcastEvent(senderId, text).toJson();
 }
 
-inline QByteArray encode(const QJsonObject &message)
+inline QByteArray encode(const QJsonObject &object)
 {
-    return QJsonDocument(message).toJson(QJsonDocument::Compact);
+    const auto message = udm15::Message::fromJson(object);
+    if (!message)
+        return {};
+
+    const auto bytes = udm15::MessageSerializer::serialize(*message);
+    return bytes.value_or(QByteArray{});
 }
 
 inline bool parseBroadcastRequest(const QString &wireText, QString *text, QString *error)
 {
-    const auto message = udm15::Message::decode(wireText.toUtf8(), error);
+    const auto message = udm15::MessageSerializer::deserialize(wireText.toUtf8(), error);
     if (!message)
         return false;
 
