@@ -1,9 +1,11 @@
 #pragma once
 
+#include "../common/ClientInfo.h"
+
 #include <QAbstractSocket>
-#include <QDateTime>
 #include <QHash>
 #include <QHostAddress>
+#include <QList>
 #include <QObject>
 #include <QString>
 #include <QStringList>
@@ -25,6 +27,7 @@ public:
     [[nodiscard]] bool isListening() const;
     [[nodiscard]] qsizetype clientCount() const;
     [[nodiscard]] QStringList clientIds() const;
+    [[nodiscard]] QList<ClientInfo> clientsInfo() const;
     [[nodiscard]] quint16 serverPort() const;
     qsizetype broadcastText(const QString &senderId, const QString &text);
 
@@ -42,12 +45,6 @@ private slots:
     void acceptPendingConnections();
 
 private:
-    struct ClientInfo {
-        QString id;
-        QString peer;
-        QDateTime connectedAt;
-    };
-
     void attachClient(QWebSocket *socket);
     bool removeClient(QWebSocket *socket);
     [[nodiscard]] static QString peerLabel(const QWebSocket *socket);
