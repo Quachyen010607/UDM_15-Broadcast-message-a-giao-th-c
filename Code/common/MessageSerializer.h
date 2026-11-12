@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Message.h"
+#include "MessageParser.h"
 
 #include <QByteArray>
 #include <QJsonDocument>
@@ -26,11 +27,11 @@ public:
         return QJsonDocument(message.toJson()).toJson(QJsonDocument::Compact);
     }
 
-    // Parses and validates the shared JSON message envelope.
+    // Incoming JSON is decoded and validated by the dedicated MessageParser.
     [[nodiscard]] static std::optional<Message> deserialize(
         const QByteArray &json, QString *error = nullptr)
     {
-        return Message::decode(json, error);
+        return MessageParser::parse(json, error);
     }
 };
 
