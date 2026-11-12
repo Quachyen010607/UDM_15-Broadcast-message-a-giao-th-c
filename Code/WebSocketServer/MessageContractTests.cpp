@@ -123,6 +123,8 @@ private slots:
         QCOMPARE(rejectedSpy.count(), 0);
         QCOMPARE(receivedSpy.first().at(1).toString(), QStringLiteral("contract-check"));
         client.close();
+        QTRY_COMPARE_WITH_TIMEOUT(client.state(), QAbstractSocket::UnconnectedState, 3000);
+        QTRY_COMPARE_WITH_TIMEOUT(server.clientCount(), 0, 3000);
     }
 
     void parserRejectsMalformedAndInvalidSchema()
