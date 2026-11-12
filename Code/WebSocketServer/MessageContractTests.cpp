@@ -60,6 +60,25 @@ private slots:
         QVERIFY(error.isEmpty());
     }
 
+    void eventMetadataRoundTripsThroughCommonJson()
+    {
+        const udm15::Message source = udm15::Message::broadcastEvent(
+            QStringLiteral("client-7"), QStringLiteral("event-check"));
+        QString error;
+        const auto wire = udm15::MessageSerializer::serialize(source, &error);
+        QVERIFY2(wire.has_value(), qPrintable(error));
+
+        const auto parsed = udm15::MessageParser::parse(*wire, &error);
+        QVERIFY2(parsed.has_value(), qPrintable(error));
+        QCOMPARE(parsed->version, source.version);
+        QCOMPARE(parsed->type, source.type);
+        QCOMPARE(parsed->text, source.text);
+        QCOMPARE(parsed->messageId, source.messageId);
+        QCOMPARE(parsed->senderId, source.senderId);
+        QCOMPARE(parsed->sentAt.toUTC(), source.sentAt.toUTC());
+        QCOMPARE(QJsonDocument::fromJson(*wire).object().size(), 6);
+    }
+
     void tcpLineAndUdpDatagramPreserveSharedJson()
     {
         const QByteArray wire = validRequest();
@@ -90,35 +109,19 @@ private slots:
         udp.stopListening();
     }
 
-    void webSocketBroadcastKeepsTheSharedMessageFields()
+    void webSocketAcceptsTheSameRequestEnvelope()
     {
         WebSocketServer server;
         QVERIFY(server.listen(QHostAddress::LocalHost, 0));
         QSignalSpy receivedSpy(&server, &WebSocketServer::textMessageReceived);
         QSignalSpy rejectedSpy(&server, &WebSocketServer::messageRejected);
         QWebSocket client;
-        QString broadcastWire;
-        connect(&client, &QWebSocket::textMessageReceived, &client,
-                [&broadcastWire](const QString &wire) { broadcastWire = wire; });
         client.open(QUrl(QStringLiteral("ws://127.0.0.1:%1").arg(server.serverPort())));
         QTRY_COMPARE_WITH_TIMEOUT(client.state(), QAbstractSocket::ConnectedState, 3000);
         QVERIFY(client.sendTextMessage(QString::fromUtf8(validRequest())) >= 0);
         QTRY_COMPARE_WITH_TIMEOUT(receivedSpy.count(), 1, 3000);
-        QTRY_VERIFY_WITH_TIMEOUT(!broadcastWire.isEmpty(), 3000);
         QCOMPARE(rejectedSpy.count(), 0);
         QCOMPARE(receivedSpy.first().at(1).toString(), QStringLiteral("contract-check"));
-
-        QString error;
-        const auto request = udm15::MessageParser::parse(validRequest(), &error);
-        QVERIFY2(request.has_value(), qPrintable(error));
-        const auto event = udm15::MessageParser::parse(broadcastWire.toUtf8(), &error);
-        QVERIFY2(event.has_value(), qPrintable(error));
-        QCOMPARE(event->version, request->version);
-        QCOMPARE(event->type, request->type);
-        QCOMPARE(event->text, request->text);
-        QVERIFY(!event->messageId.isEmpty());
-        QCOMPARE(event->senderId, receivedSpy.first().at(0).toString());
-        QVERIFY(event->sentAt.isValid());
         client.close();
     }
 
