@@ -9,16 +9,16 @@
 
 | Hạng mục | Tiến độ | Trạng thái |
 |---|---:|---|
-| Phân tích yêu cầu | 50% | Đã bắt đầu |
-| Thiết kế kiến trúc | 60% | Chưa bắt đầu |
-| TCP Server & Client | 50% | Chưa bắt đầu |
-| UDP Server & Client | 50% | Đã bắt đầu |
-| WebSocket Server & Client | 50% | Đã bắt đầu |
-| Common & Message | 50% | Chưa bắt đầu |
-| Giao diện GUI | 50% | Chưa bắt đầu |
-| Tích hợp hệ thống | 20% | Chưa bắt đầu |
-| Kiểm thử | 0% | Chưa bắt đầu |
-| Báo cáo & thuyết trình | 0% | Chưa bắt đầu |
+| Phân tích yêu cầu | 100% | Đã bắt đầu |
+| Thiết kế kiến trúc | 100% | Chưa bắt đầu |
+| TCP Server & Client | 100% | Chưa bắt đầu |
+| UDP Server & Client | 100% | Đã bắt đầu |
+| WebSocket Server & Client | 100% | Đã bắt đầu |
+| Common & Message | 100% | Chưa bắt đầu |
+| Giao diện GUI | 100% | Chưa bắt đầu |
+| Tích hợp hệ thống | 60% | Chưa bắt đầu |
+| Kiểm thử | 80% | Chưa bắt đầu |
+| Báo cáo & thuyết trình | 50% | Chưa bắt đầu |
 
 ## Thành viên
 
