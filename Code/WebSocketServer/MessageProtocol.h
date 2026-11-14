@@ -1,30 +1,24 @@
 #pragma once
 
-#include <QDateTime>
+#include "../common/Message.h"
+
 #include <QJsonDocument>
 #include <QJsonObject>
-#include <QJsonParseError>
 #include <QString>
-#include <QUuid>
 
 namespace MessageProtocol {
-constexpr int Version = 1;
+constexpr int Version = udm15::MessageProtocolVersion;
 
+// Compatibility helpers for the WebSocket module; serialization and validation
+// are delegated to the shared transport-independent Message model.
 inline QJsonObject makeBroadcastRequest(const QString &text)
 {
-    return {{QStringLiteral("version"), Version},
-            {QStringLiteral("type"), QStringLiteral("broadcast")},
-            {QStringLiteral("payload"), QJsonObject{{QStringLiteral("text"), text}}}};
+    return udm15::Message::broadcastRequest(text).toJson();
 }
 
 inline QJsonObject makeBroadcastEvent(const QString &senderId, const QString &text)
 {
-    return {{QStringLiteral("version"), Version},
-            {QStringLiteral("type"), QStringLiteral("broadcast")},
-            {QStringLiteral("messageId"), QUuid::createUuid().toString(QUuid::WithoutBraces)},
-            {QStringLiteral("senderId"), senderId},
-            {QStringLiteral("sentAt"), QDateTime::currentDateTimeUtc().toString(Qt::ISODateWithMs)},
-            {QStringLiteral("payload"), QJsonObject{{QStringLiteral("text"), text}}}};
+    return udm15::Message::broadcastEvent(senderId, text).toJson();
 }
 
 inline QByteArray encode(const QJsonObject &message)
@@ -34,29 +28,21 @@ inline QByteArray encode(const QJsonObject &message)
 
 inline bool parseBroadcastRequest(const QString &wireText, QString *text, QString *error)
 {
-    QJsonParseError parseError;
-    const QJsonDocument document = QJsonDocument::fromJson(wireText.toUtf8(), &parseError);
-    if (parseError.error != QJsonParseError::NoError || !document.isObject()) {
-        if (error) *error = QStringLiteral("Message must be a JSON object");
+    const auto message = udm15::Message::decode(wireText.toUtf8(), error);
+    if (!message)
         return false;
-    }
 
-    const QJsonObject object = document.object();
-    if (object.value(QStringLiteral("version")).toInt(-1) != Version ||
-        object.value(QStringLiteral("type")).toString() != QStringLiteral("broadcast")) {
-        if (error) *error = QStringLiteral("Expected protocol v1 broadcast message");
-        return false;
-    }
-
-    const QJsonValue payloadValue = object.value(QStringLiteral("payload"));
-    if (!payloadValue.isObject() ||
-        !payloadValue.toObject().value(QStringLiteral("text")).isString()) {
-        if (error) *error = QStringLiteral("payload.text must be a string");
+    // Requests from clients must not carry server-generated event metadata.
+    if (!message->messageId.isEmpty() || !message->senderId.isEmpty() || message->sentAt.isValid()) {
+        if (error)
+            *error = QStringLiteral("Client request must not contain event metadata");
         return false;
     }
 
     if (text)
-        *text = payloadValue.toObject().value(QStringLiteral("text")).toString();
+        *text = message->text;
+    if (error)
+        error->clear();
     return true;
 }
 } // namespace MessageProtocol
