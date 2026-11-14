@@ -93,7 +93,7 @@ private slots:
         QSet<QString> addresses;
         for (const ClientInfo& info : m_server->clients())
         {
-            addresses.insert(info.address);
+            addresses.insert(info.peerAddress());
         }
         QCOMPARE(int(addresses.size()), 3);
     }

@@ -1,11 +1,13 @@
 #pragma once
+
+#include "../common/ClientInfo.h"
+#include "Message.h"
+
 #include <QAbstractSocket>
 #include <QObject>
 #include <QString>
 #include <QTcpSocket>
 #include <QTimer>
-
-#include "Message.h"
 
 // Client TCP dua tren QTcpSocket: ket noi, gui va nhan message tu Server
 class TcpClient : public QObject
@@ -20,6 +22,7 @@ public:
 
     bool isConnected() const;
     QAbstractSocket::SocketState state() const;
+    const ClientInfo &clientInfo() const;
 
     // Gui 1 message (JSON + '\n') len Server
     bool sendMessage(const Message& msg);
@@ -46,6 +49,8 @@ private:
     QTimer m_retryTimer;
     QString m_host;
     quint16 m_port = 0;
+    QString m_clientId;
+    ClientInfo m_clientInfo;
     bool m_autoReconnect = false;
     bool m_userDisconnect = false;
     bool m_wasConnected = false;

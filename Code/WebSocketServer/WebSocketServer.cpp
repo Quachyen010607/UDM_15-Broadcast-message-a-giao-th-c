@@ -60,8 +60,17 @@ QStringList WebSocketServer::clientIds() const
     QStringList ids;
     ids.reserve(m_clients.size());
     for (auto it = m_clients.cbegin(); it != m_clients.cend(); ++it)
-        ids.append(it->id);
+        ids.append(it->clientId());
     return ids;
+}
+
+QList<ClientInfo> WebSocketServer::clientsInfo() const
+{
+    QList<ClientInfo> clients;
+    clients.reserve(m_clients.size());
+    for (auto it = m_clients.cbegin(); it != m_clients.cend(); ++it)
+        clients.append(it.value());
+    return clients;
 }
 
 qsizetype WebSocketServer::broadcastText(const QString &senderId, const QString &text)
@@ -87,8 +96,8 @@ void WebSocketServer::acceptPendingConnections()
             continue;
 
         if (m_clients.size() >= m_maxConnections) {
-            socket->close(QWebSocketProtocol::CloseCodePolicyViolated, QStringLiteral("Maximum client count reached"));
-                          // reject over-limit client
+            socket->close(QWebSocketProtocol::CloseCodePolicyViolated,
+                          QStringLiteral("Maximum client count reached"));
             socket->deleteLater();
             continue;
         }
@@ -101,23 +110,21 @@ void WebSocketServer::attachClient(QWebSocket *socket)
     if (!socket || m_clients.contains(socket))
         return;
 
-    ClientInfo info;
-    info.id = QStringLiteral("client-%1").arg(++m_nextClientId);
-    info.peer = peerLabel(socket);
-    info.connectedAt = QDateTime::currentDateTimeUtc();
+    const ClientInfo info(QStringLiteral("client-%1").arg(++m_nextClientId),
+                          peerLabel(socket));
     m_clients.insert(socket, info);
 
     connect(socket, &QWebSocket::stateChanged, this,
             [this, socket](QAbstractSocket::SocketState state) {
         const auto it = m_clients.constFind(socket);
         if (it != m_clients.cend())
-            emit clientStateChanged(it->id, state);
+            emit clientStateChanged(it->clientId(), state);
     });
     connect(socket, &QWebSocket::errorOccurred, this,
             [this, socket](QAbstractSocket::SocketError) {
         const auto it = m_clients.constFind(socket);
         if (it != m_clients.cend())
-            emit clientError(it->id, socket->errorString());
+            emit clientError(it->clientId(), socket->errorString());
     });
     connect(socket, &QWebSocket::textMessageReceived, this,
             [this, socket](const QString &wireText) {
@@ -128,11 +135,11 @@ void WebSocketServer::attachClient(QWebSocket *socket)
         QString text;
         QString error;
         if (!MessageProtocol::parseBroadcastRequest(wireText, &text, &error)) {
-            emit messageRejected(it->id, error);
+            emit messageRejected(it->clientId(), error);
             return;
         }
-        emit textMessageReceived(it->id, text);
-        broadcastText(it->id, text);
+        emit textMessageReceived(it->clientId(), text);
+        broadcastText(it->clientId(), text);
     });
     connect(socket, &QWebSocket::disconnected, this, [this, socket]() {
         if (removeClient(socket))
@@ -143,8 +150,8 @@ void WebSocketServer::attachClient(QWebSocket *socket)
         removeClient(socket);
     });
 
-    emit clientConnected(info.id, info.peer);
-    emit clientStateChanged(info.id, socket->state());
+    emit clientConnected(info.clientId(), info.peerAddress());
+    emit clientStateChanged(info.clientId(), socket->state());
     emit clientCountChanged(m_clients.size());
 }
 
@@ -154,8 +161,8 @@ bool WebSocketServer::removeClient(QWebSocket *socket)
     if (it == m_clients.end())
         return false;
 
-    const QString id = it->id;
-    const QString peer = it->peer;
+    const QString id = it->clientId();
+    const QString peer = it->peerAddress();
     m_clients.erase(it);
     emit clientDisconnected(id, peer);
     emit clientCountChanged(m_clients.size());
