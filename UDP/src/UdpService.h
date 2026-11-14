@@ -1,5 +1,6 @@
 #pragma once
 
+#include <QByteArray>
 #include <QObject>
 #include <QHostAddress>
 #include <QJsonObject>
@@ -31,6 +32,9 @@ private slots:
     void readPendingDatagrams();
 
 private:
+    bool sendDatagram(const QByteArray &bytes, quint16 destinationPort,
+                      const QHostAddress &destination);
+
     QUdpSocket m_receiver;
     QUdpSocket m_sender;
 };
